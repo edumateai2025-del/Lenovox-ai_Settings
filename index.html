@@ -132,36 +132,48 @@ const usernameInput = document.getElementById("username");
 
 avatar.onclick = () => photoInput.click();
 
-auth.onAuthStateChanged(user => {
-  if (!user) {
-    window.location.href = "https://learnovox-ai-auth.vercel.app/";
-    return;
+// Apply theme helper
+function applyTheme(theme) {
+  if (theme === "dark") {
+    document.body.classList.add("dark");
+  } else {
+    document.body.classList.remove("dark");
   }
+}
 
-  const uid = user.uid;
-  const autoUsername = "user_" + uid.slice(0, 6);
+// Fetch user info if logged in
+auth.onAuthStateChanged(user => {
+  const uid = user ? user.uid : null;
+  const autoUsername = uid ? "user_" + uid.slice(0, 6) : "guest";
   usernameInput.value = autoUsername;
 
-  db.collection("users").doc(uid).get().then(doc => {
-    if (doc.exists) {
-      const d = doc.data();
-      nameInput.value = d.name || "";
-      ageInput.value = d.age || "";
-      themeSelect.value = d.theme || "";
-      if (d.photo) avatar.src = d.photo;
-      if (d.theme === "dark") document.body.classList.add("dark");
-    }
-  });
+  if (uid) {
+    db.collection("users").doc(uid).get().then(doc => {
+      if (doc.exists) {
+        const d = doc.data();
+        nameInput.value = d.name || "";
+        ageInput.value = d.age || "";
+        themeSelect.value = d.theme || "";
+        if (d.photo) avatar.src = d.photo;
+        applyTheme(d.theme);
+      }
+    });
+  }
 });
 
+// Preview selected photo
 photoInput.addEventListener("change", e => {
   const file = e.target.files[0];
   if (file) avatar.src = URL.createObjectURL(file);
 });
 
+// Save settings
 function saveSettings() {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) {
+    alert("Please log in to save your settings.");
+    return;
+  }
 
   const file = photoInput.files[0];
   const data = {
@@ -171,11 +183,7 @@ function saveSettings() {
     username: usernameInput.value
   };
 
-  if (themeSelect.value === "dark") {
-    document.body.classList.add("dark");
-  } else {
-    document.body.classList.remove("dark");
-  }
+  applyTheme(themeSelect.value);
 
   if (file) {
     const ref = storage.ref("profiles/" + user.uid + ".jpg");
@@ -192,12 +200,14 @@ function saveSettings() {
   }
 }
 
+// Logout
 function logout() {
   auth.signOut().then(() => {
-    window.location.href = "https://learnovox-ai-auth.vercel.app/";
+    // Optional: Just show settings as guest instead of redirect
+    alert("You are logged out. Please log in to save changes.");
   });
 }
 </script>
 
 </body>
-  </html>
+</html>
